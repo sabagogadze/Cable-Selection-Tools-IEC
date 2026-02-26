@@ -34,7 +34,10 @@ import {
   Building2,
   Factory,
   PenTool,
-  X
+  X,
+  Lightbulb,
+  Fan,
+  Flame
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
@@ -133,6 +136,12 @@ const translations = {
       commercial: "Commercial (3 kA)",
       industrial: "Industrial (6 kA)",
       custom: "Calculate / Custom"
+    },
+    pfPresets: {
+      resistive: "Heater/Incandescent (1.0)",
+      mixed: "Mixed Load (0.9)",
+      motor: "Motor/Inductive (0.8)",
+      custom: "Custom Value"
     },
     scCalc: {
       title: "Short Circuit Calculator",
@@ -235,6 +244,12 @@ const translations = {
       commercial: "კომერციული (3 kA)",
       industrial: "ინდუსტრიული (6 kA)",
       custom: "გამოთვლა / ხელით შეყვანა"
+    },
+    pfPresets: {
+      resistive: "გამათბობელი/ტენი (1.0)",
+      mixed: "შერეული დატვირთვა (0.9)",
+      motor: "ძრავი/ინდუქციური (0.8)",
+      custom: "ხელით შეყვანა"
     },
     scCalc: {
       title: "მოკლე ჩართვის კალკულატორი",
@@ -509,7 +524,8 @@ export default function App() {
   const [lang, setLang] = useState<Language>('ka');
   const [lineName, setLineName] = useState<string>('');
   const [power, setPower] = useState<number | ''>('');
-  const [powerFactor, setPowerFactor] = useState<number | ''>('');
+  const [pfMode, setPfMode] = useState<'resistive' | 'mixed' | 'motor' | 'custom'>('mixed');
+  const [powerFactor, setPowerFactor] = useState<number | ''>(0.9);
   const [isThreePhase, setIsThreePhase] = useState<boolean>(true);
   const [conductor, setConductor] = useState<ConductorMaterial>('Copper');
   const [insulation, setInsulation] = useState<InsulationType>('XLPE');
@@ -564,6 +580,14 @@ export default function App() {
       setShortCircuit('');
       setIsScModalOpen(true);
     }
+  };
+
+  const handlePfModeChange = (mode: 'resistive' | 'mixed' | 'motor' | 'custom') => {
+    setPfMode(mode);
+    if (mode === 'resistive') setPowerFactor(1.0);
+    else if (mode === 'mixed') setPowerFactor(0.9);
+    else if (mode === 'motor') setPowerFactor(0.8);
+    else setPowerFactor('');
   };
 
   const handleCalculateSC = () => {
@@ -666,7 +690,7 @@ export default function App() {
       return mapping[phaseSize] || Math.ceil(phaseSize / 2);
     };
 
-    // 1. Calculate Load Current
+    // 1. Calculate Load Current (Design Current Ib)
     let loadCurrent = 0;
     if (isThreePhase) {
       loadCurrent = (p * 1000) / (Math.sqrt(3) * voltage * pf);
@@ -674,9 +698,21 @@ export default function App() {
       loadCurrent = (p * 1000) / (voltage * pf);
     }
 
-    // 2. Select Breaker (In)
+    // 2. Select Breaker (In) based on Design Current (Ib)
+    // The rule is: Ib <= In <= Iz
+    // So we pick the next standard breaker size that is >= loadCurrent
     const breaker = BREAKER_SIZES.find(b => b >= loadCurrent);
     const nominalBreaker = breaker || loadCurrent;
+
+    // Determine Breaker Type (MCB vs MCCB) and Poles
+    const poles = isThreePhase ? '3P' : '1P';
+    let breakerType = 'MCB';
+    if (nominalBreaker > 125) {
+      breakerType = 'MCCB';
+    } else if (nominalBreaker > 63) {
+      // Between 63A and 125A can be either, but MCCB is more common for industrial
+      breakerType = 'MCB/MCCB'; 
+    }
 
     // 3. Correction Factors
     const tempTable = insulation === 'PVC' ? TEMP_CORRECTION_PVC : TEMP_CORRECTION_XLPE;
@@ -787,7 +823,7 @@ export default function App() {
       ? (lang === 'ka' ? "არასაკმარისი გამტარობა" : "Insufficient Capacity")
       : `${insName} ${matName} - ${parallelStr}(${cores}x${finalResultSize}+${peSize}mm²)`;
 
-    const recommendedBreaker = breaker ? `${breaker}A` : 'N/A';
+    const recommendedBreaker = breaker ? `${breakerType} ${poles} ${breaker}A` : 'N/A';
 
     return {
       loadCurrent,
@@ -915,15 +951,50 @@ export default function App() {
                 </div>
                 <div>
                   <Label tooltip={t.tooltips.pf}>{t.pf}</Label>
-                  <Input 
-                    type="number" 
-                    value={powerFactor} 
-                    onChange={setPowerFactor} 
-                    step="0.01" 
-                    min="0" 
-                    max="1"
-                    isValid={isPfValid}
-                  />
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handlePfModeChange('resistive')}
+                        className={`flex items-center justify-center gap-2 py-2 px-3 text-[10px] uppercase tracking-wider font-bold rounded-lg border transition-all ${pfMode === 'resistive' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      >
+                        <Flame className="w-3 h-3" />
+                        <span className="truncate">{t.pfPresets.resistive.split(' ')[0]}</span>
+                      </button>
+                      <button
+                        onClick={() => handlePfModeChange('mixed')}
+                        className={`flex items-center justify-center gap-2 py-2 px-3 text-[10px] uppercase tracking-wider font-bold rounded-lg border transition-all ${pfMode === 'mixed' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      >
+                        <Lightbulb className="w-3 h-3" />
+                        <span className="truncate">{t.pfPresets.mixed.split(' ')[0]}</span>
+                      </button>
+                      <button
+                        onClick={() => handlePfModeChange('motor')}
+                        className={`flex items-center justify-center gap-2 py-2 px-3 text-[10px] uppercase tracking-wider font-bold rounded-lg border transition-all ${pfMode === 'motor' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      >
+                        <Fan className="w-3 h-3" />
+                        <span className="truncate">{t.pfPresets.motor.split(' ')[0]}</span>
+                      </button>
+                      <button
+                        onClick={() => handlePfModeChange('custom')}
+                        className={`flex items-center justify-center gap-2 py-2 px-3 text-[10px] uppercase tracking-wider font-bold rounded-lg border transition-all ${pfMode === 'custom' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      >
+                        <PenTool className="w-3 h-3" />
+                        <span className="truncate">{t.pfPresets.custom.split(' ')[0]}</span>
+                      </button>
+                    </div>
+                    <Input 
+                      type="number" 
+                      value={powerFactor} 
+                      onChange={(val) => {
+                        setPowerFactor(val);
+                        setPfMode('custom');
+                      }} 
+                      step="0.01" 
+                      min="0" 
+                      max="1"
+                      isValid={isPfValid}
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label tooltip={t.tooltips.phase}>{t.phase}</Label>
