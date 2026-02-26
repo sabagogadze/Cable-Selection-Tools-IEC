@@ -1,0 +1,5 @@
+{
+  "name": "IEC 60364-5-52 Cable Calculator",
+  "description": "Professional electrical cable sizing calculator based on IEC 60364-5-52 standards, including current-carrying capacity, correction factors, and voltage drop analysis.",
+  "requestFramePermissions": []
+}
