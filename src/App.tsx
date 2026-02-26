@@ -41,6 +41,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import { 
   COPPER_PVC_3_LOADED, 
   COPPER_XLPE_3_LOADED, 
@@ -102,6 +104,7 @@ const translations = {
     missingFields: "Please fill in all required fields:",
     addToProject: "Add to Project",
     exportExcel: "Export to Excel",
+    exportPdf: "Export to PDF",
     projectList: "Project Lines",
     recommendedBreaker: "Recommended Breaker",
     instructions: [
@@ -210,6 +213,7 @@ const translations = {
     missingFields: "გთხოვთ შეავსოთ ყველა სავალდებულო ველი:",
     addToProject: "პროექტში დამატება",
     exportExcel: "ექსელში ექსპორტი",
+    exportPdf: "PDF ექსპორტი",
     projectList: "პროექტის ხაზები",
     recommendedBreaker: "რეკომენდირებული ამომრთველი",
     instructions: [
@@ -541,6 +545,7 @@ export default function App() {
   const [trPower, setTrPower] = useState<number | ''>(400);
   const [trImpedance, setTrImpedance] = useState<number | ''>(4);
   const [disconnectionTime, setDisconnectionTime] = useState<number | ''>(0.02);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [projectLines, setProjectLines] = useState<ProjectLine[]>(() => {
     try {
       const saved = localStorage.getItem('iec_calculator_projects');
@@ -658,6 +663,35 @@ export default function App() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Project Lines");
     XLSX.writeFile(wb, "Project_Lines.xlsx");
+  };
+
+  const handleExportPDF = async () => {
+    if (projectLines.length === 0) return;
+    setIsExportingPDF(true);
+    
+    try {
+      const element = document.getElementById('pdf-report-content');
+      if (!element) return;
+      
+      const canvas = await html2canvas(element, { 
+        scale: 2,
+        useCORS: true,
+        logging: false
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`IEC_Cable_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error("PDF Export failed:", error);
+    } finally {
+      setIsExportingPDF(false);
+    }
   };
 
   const missingFields = useMemo(() => {
@@ -1386,13 +1420,23 @@ export default function App() {
                 <Layers className="w-4 h-4 text-emerald-500" />
                 <h2 className="text-sm font-bold uppercase tracking-widest">{t.projectList}</h2>
               </div>
-              <button
-                onClick={handleExportExcel}
-                className="px-3 md:px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-emerald-500/20 transition-colors flex items-center gap-2"
-              >
-                <Download className="w-3 h-3" />
-                <span className="hidden sm:inline">{t.exportExcel}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportPDF}
+                  disabled={isExportingPDF}
+                  className="px-3 md:px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-red-500/20 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  <FileText className="w-3 h-3" />
+                  <span className="hidden sm:inline">{isExportingPDF ? '...' : t.exportPdf}</span>
+                </button>
+                <button
+                  onClick={handleExportExcel}
+                  className="px-3 md:px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-emerald-500/20 transition-colors flex items-center gap-2"
+                >
+                  <Download className="w-3 h-3" />
+                  <span className="hidden sm:inline">{t.exportExcel}</span>
+                </button>
+              </div>
             </div>
             <div className="p-4 md:p-6 overflow-x-auto custom-scrollbar">
               <table className="w-full text-left text-sm text-zinc-400">
@@ -1448,6 +1492,53 @@ export default function App() {
           </div>
         </footer>
       </main>
+
+      {/* Hidden PDF Report Template */}
+      <div className="fixed top-[-9999px] left-[-9999px]">
+        <div id="pdf-report-content" className="bg-white text-black p-10 w-[800px] min-h-[1131px] font-sans">
+          <div className="flex justify-between items-center border-b-2 border-emerald-600 pb-4 mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-zinc-900">{t.title}</h1>
+              <p className="text-zinc-500 mt-1">{t.subtitle}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold text-zinc-600">{new Date().toLocaleDateString()}</p>
+              <p className="text-xs text-zinc-400 mt-1">IEC 60364-5-52</p>
+            </div>
+          </div>
+
+          <table className="w-full text-sm text-left border-collapse">
+            <thead>
+              <tr className="bg-zinc-100 text-zinc-700">
+                <th className="p-3 border border-zinc-300 font-bold">{t.lineName}</th>
+                <th className="p-3 border border-zinc-300 font-bold">{t.power}</th>
+                <th className="p-3 border border-zinc-300 font-bold">{t.method}</th>
+                <th className="p-3 border border-zinc-300 font-bold">{t.length}</th>
+                <th className="p-3 border border-zinc-300 font-bold">Breaker</th>
+                <th className="p-3 border border-zinc-300 font-bold">Cable Size</th>
+                <th className="p-3 border border-zinc-300 font-bold">V. Drop</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projectLines.map((line, idx) => (
+                <tr key={idx} className="border-b border-zinc-200">
+                  <td className="p-3 border border-zinc-300 font-medium">{line.name}</td>
+                  <td className="p-3 border border-zinc-300">{line.power} kW</td>
+                  <td className="p-3 border border-zinc-300">{line.method}</td>
+                  <td className="p-3 border border-zinc-300">{line.length} m</td>
+                  <td className="p-3 border border-zinc-300">{line.breaker}</td>
+                  <td className="p-3 border border-zinc-300 font-bold text-emerald-700">{line.cableSize}</td>
+                  <td className="p-3 border border-zinc-300">{line.vDropPercent}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="mt-12 pt-4 border-t border-zinc-200 text-xs text-zinc-500 text-center">
+            {t.footer} - {t.disclaimer}
+          </div>
+        </div>
+      </div>
 
       {/* Short Circuit Calculator Modal */}
       <AnimatePresence>
