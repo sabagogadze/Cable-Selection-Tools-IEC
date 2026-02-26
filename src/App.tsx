@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Zap, 
   Layers, 
@@ -18,7 +18,23 @@ import {
   HelpCircle,
   Plus,
   Download,
-  Trash2
+  Trash2,
+  Box,
+  Package,
+  Square,
+  Copy,
+  GripHorizontal,
+  ArrowDownToLine,
+  Wind,
+  AlignJustify,
+  List,
+  ChevronDown,
+  Check,
+  Home,
+  Building2,
+  Factory,
+  PenTool,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
@@ -112,6 +128,21 @@ const translations = {
       F: "F - Single-core cables, touching (Air)",
       G: "G - Single-core cables, spaced (Air)"
     },
+    scPresets: {
+      residential: "Residential (1 kA)",
+      commercial: "Commercial (3 kA)",
+      industrial: "Industrial (6 kA)",
+      custom: "Calculate / Custom"
+    },
+    scCalc: {
+      title: "Short Circuit Calculator",
+      desc: "Estimate short circuit current based on transformer size and line impedance.",
+      trPower: "Transformer Power (kVA)",
+      trImpedance: "Transformer Impedance (%)",
+      voltage: "System Voltage (V)",
+      calculate: "Calculate & Apply",
+      cancel: "Cancel"
+    },
     tooltips: {
       power: "Total active power of the load in kilowatts.",
       voltage: "Nominal system voltage (220V for 1-phase, 380V for 3-phase).",
@@ -198,6 +229,21 @@ const translations = {
       E: "E - მრავალძარღვიანი კაბელი ღია ჰაერში",
       F: "F - ერთძარღვიანი კაბელები, შეხებით (ჰაერი)",
       G: "G - ერთძარღვიანი კაბელები, დაშორებით (ჰაერი)"
+    },
+    scPresets: {
+      residential: "საცხოვრებელი (1 kA)",
+      commercial: "კომერციული (3 kA)",
+      industrial: "ინდუსტრიული (6 kA)",
+      custom: "გამოთვლა / ხელით შეყვანა"
+    },
+    scCalc: {
+      title: "მოკლე ჩართვის კალკულატორი",
+      desc: "გამოთვალეთ მოკლე ჩართვის დენი ტრანსფორმატორის სიმძლავრისა და წინაღობის მიხედვით.",
+      trPower: "ტრანსფორმატორის სიმძლავრე (kVA)",
+      trImpedance: "ტრანსფორმატორის წინაღობა (%)",
+      voltage: "სისტემის ძაბვა (V)",
+      calculate: "გამოთვლა და გამოყენება",
+      cancel: "გაუქმება"
     },
     tooltips: {
       power: "დატვირთვის სრული აქტიური სიმძლავრე კილოვატებში.",
@@ -333,6 +379,85 @@ const Select = ({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectEle
   </select>
 );
 
+const MethodIcons: Record<string, React.ElementType> = {
+  A1: Box,
+  A2: Package,
+  B1: Square,
+  B2: Copy,
+  C: GripHorizontal,
+  D: ArrowDownToLine,
+  E: Wind,
+  F: AlignJustify,
+  G: List
+};
+
+const MethodSelector = ({ value, onChange, options }: { value: string, onChange: (val: string) => void, options: Record<string, string> }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const SelectedIcon = MethodIcons[value] || Box;
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all"
+      >
+        <div className="flex items-center gap-3 truncate pr-2">
+          <SelectedIcon className="w-4 h-4 text-emerald-500 shrink-0" />
+          <span className="truncate text-left">{options[value]}</span>
+        </div>
+        <ChevronDown className={`w-4 h-4 text-zinc-500 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.15 }}
+            className="absolute z-[100] w-[calc(100vw-3rem)] sm:w-[400px] -left-4 sm:left-0 mt-2 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl max-h-[40vh] sm:max-h-80 overflow-y-auto custom-scrollbar"
+          >
+            <div className="p-1">
+              {Object.entries(options).map(([key, text]) => {
+                const Icon = MethodIcons[key] || Box;
+                const isSelected = key === value;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      onChange(key);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left text-sm transition-colors hover:bg-zinc-800/80 ${isSelected ? 'bg-emerald-500/10 text-emerald-400' : 'text-zinc-300'}`}
+                  >
+                    <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${isSelected ? 'text-emerald-500' : 'text-zinc-500'}`} />
+                    <span className="flex-1 leading-relaxed">{text}</span>
+                    {isSelected && <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-1" />}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const CollapsibleInstructions = ({ title, instructions }: { title: string; instructions: string[] }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -388,15 +513,31 @@ export default function App() {
   const [isThreePhase, setIsThreePhase] = useState<boolean>(true);
   const [conductor, setConductor] = useState<ConductorMaterial>('Copper');
   const [insulation, setInsulation] = useState<InsulationType>('XLPE');
-  const [method, setMethod] = useState<InstallationMethod>('C');
+  const [method, setMethod] = useState<InstallationMethod>('A1');
   const [ambientTemp, setAmbientTemp] = useState<number>(30);
   const [grouping, setGrouping] = useState<number>(1);
   const [parallelCount, setParallelCount] = useState<number>(1);
   const [length, setLength] = useState<number | ''>('');
   const [maxVDrop, setMaxVDrop] = useState<number | ''>('');
-  const [shortCircuit, setShortCircuit] = useState<number | ''>('');
+  const [shortCircuitMode, setShortCircuitMode] = useState<'residential' | 'commercial' | 'industrial' | 'custom'>('residential');
+  const [shortCircuit, setShortCircuit] = useState<number | ''>(1);
+  const [isScModalOpen, setIsScModalOpen] = useState(false);
+  const [trPower, setTrPower] = useState<number | ''>(400);
+  const [trImpedance, setTrImpedance] = useState<number | ''>(4);
   const [disconnectionTime, setDisconnectionTime] = useState<number | ''>(0.02);
-  const [projectLines, setProjectLines] = useState<ProjectLine[]>([]);
+  const [projectLines, setProjectLines] = useState<ProjectLine[]>(() => {
+    try {
+      const saved = localStorage.getItem('iec_calculator_projects');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to load projects", e);
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('iec_calculator_projects', JSON.stringify(projectLines));
+  }, [projectLines]);
 
   const t = translations[lang];
 
@@ -413,6 +554,28 @@ export default function App() {
   const isDisconnectionTimeValid = disconnectionTime !== '' && (disconnectionTime as number) > 0;
 
   const isFormComplete = isLineNameValid && isPowerValid && isPfValid && isLengthValid && isMaxVDropValid && isShortCircuitValid && isDisconnectionTimeValid;
+
+  const handleScModeChange = (mode: 'residential' | 'commercial' | 'industrial' | 'custom') => {
+    setShortCircuitMode(mode);
+    if (mode === 'residential') setShortCircuit(1);
+    else if (mode === 'commercial') setShortCircuit(3);
+    else if (mode === 'industrial') setShortCircuit(6);
+    else {
+      setShortCircuit('');
+      setIsScModalOpen(true);
+    }
+  };
+
+  const handleCalculateSC = () => {
+    if (trPower !== '' && trImpedance !== '') {
+      // Isc = (S * 1000) / (sqrt(3) * V * (Z/100)) for 3-phase
+      // Simplified approximation at transformer secondary
+      const v = isThreePhase ? 380 : 220;
+      const isc = ((trPower as number) * 1000) / (Math.sqrt(3) * v * ((trImpedance as number) / 100));
+      setShortCircuit(Number((isc / 1000).toFixed(2))); // Convert to kA
+      setIsScModalOpen(false);
+    }
+  };
 
   const handleAddToProject = () => {
     if (!isFormComplete || !results) return;
@@ -648,7 +811,7 @@ export default function App() {
     <div className="min-h-screen bg-[#0A0A0A] text-zinc-100 font-sans selection:bg-emerald-500/30">
       <div className="fixed inset-0 bg-[linear-gradient(to_right,#1a1a1a_1px,transparent_1px),linear-gradient(to_bottom,#1a1a1a_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none opacity-20" />
 
-      <main className="relative max-w-6xl mx-auto px-6 py-12">
+      <main className="relative max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-12">
         {/* Language Switcher */}
         <div className="flex justify-end mb-4">
           <div className="flex bg-zinc-900 rounded-lg p-1 border border-zinc-800">
@@ -668,7 +831,7 @@ export default function App() {
         </div>
 
         {/* Header */}
-        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <header className="mb-8 md:mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
@@ -676,10 +839,10 @@ export default function App() {
               </div>
               <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-emerald-500/80">{t.compliance}</span>
             </div>
-            <h1 className="text-4xl font-bold tracking-tight text-white mb-2">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-2">
               {t.title.split(' ')[0]} <span className="text-zinc-500 font-light italic">{t.title.split(' ').slice(1).join(' ')}</span>
             </h1>
-            <p className="text-zinc-400 max-w-xl text-sm leading-relaxed">
+            <p className="text-zinc-400 max-w-xl text-xs md:text-sm leading-relaxed">
               {t.subtitle}
             </p>
           </div>
@@ -709,18 +872,18 @@ export default function App() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
           {/* Left Column: Inputs */}
           <div className="lg:col-span-7 space-y-6">
             
             {/* Load Parameters */}
-            <section className="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm">
-              <div className="flex items-center gap-2 mb-6">
+            <section className="relative z-10 bg-zinc-900/30 border border-zinc-800 rounded-2xl p-4 md:p-6 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-4 md:mb-6">
                 <Settings2 className="w-4 h-4 text-zinc-400" />
                 <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-300">{t.loadParams}</h2>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div className="md:col-span-2">
                   <Label tooltip={t.tooltips.lineName}>{t.lineName}</Label>
                   <Input 
@@ -808,13 +971,13 @@ export default function App() {
             </section>
 
             {/* Installation Environment */}
-            <section className="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm">
-              <div className="flex items-center gap-2 mb-6">
+            <section className="relative z-20 bg-zinc-900/30 border border-zinc-800 rounded-2xl p-4 md:p-6 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-4 md:mb-6">
                 <Layers className="w-4 h-4 text-zinc-400" />
                 <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-300">{t.instEnv}</h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
                   <Label tooltip={t.tooltips.insulation}>{t.insulation}</Label>
                   <Select value={insulation} onChange={(e) => setInsulation(e.target.value as InsulationType)}>
@@ -824,11 +987,11 @@ export default function App() {
                 </div>
                 <div>
                   <Label tooltip={t.tooltips.method}>{t.method}</Label>
-                  <Select value={method} onChange={(e) => setMethod(e.target.value as InstallationMethod)}>
-                    {Object.entries(t.methods).map(([key, value]) => (
-                      <option key={key} value={key}>{value}</option>
-                    ))}
-                  </Select>
+                  <MethodSelector 
+                    value={method} 
+                    onChange={(val) => setMethod(val as InstallationMethod)} 
+                    options={t.methods} 
+                  />
                 </div>
                 <div>
                   <Label tooltip={t.tooltips.ambient}>{t.ambient}</Label>
@@ -856,13 +1019,13 @@ export default function App() {
             </section>
 
             {/* Cable Run */}
-            <section className="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm">
-              <div className="flex items-center gap-2 mb-6">
+            <section className="relative z-10 bg-zinc-900/30 border border-zinc-800 rounded-2xl p-4 md:p-6 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-4 md:mb-6">
                 <Ruler className="w-4 h-4 text-zinc-400" />
                 <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-300">{t.cableRun}</h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
                   <Label tooltip={t.tooltips.length}>{t.length}</Label>
                   <Input 
@@ -884,13 +1047,60 @@ export default function App() {
                 </div>
                 <div>
                   <Label tooltip={t.tooltips.shortCircuit}>{t.shortCircuit}</Label>
-                  <Input 
-                    type="number" 
-                    value={shortCircuit} 
-                    onChange={setShortCircuit} 
-                    step="0.1"
-                    isValid={isShortCircuitValid}
-                  />
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleScModeChange('residential')}
+                        className={`flex items-center justify-center gap-2 py-2 px-3 text-[10px] uppercase tracking-wider font-bold rounded-lg border transition-all ${shortCircuitMode === 'residential' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      >
+                        <Home className="w-3 h-3" />
+                        <span className="truncate">{t.scPresets.residential.split(' ')[0]}</span>
+                      </button>
+                      <button
+                        onClick={() => handleScModeChange('commercial')}
+                        className={`flex items-center justify-center gap-2 py-2 px-3 text-[10px] uppercase tracking-wider font-bold rounded-lg border transition-all ${shortCircuitMode === 'commercial' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      >
+                        <Building2 className="w-3 h-3" />
+                        <span className="truncate">{t.scPresets.commercial.split(' ')[0]}</span>
+                      </button>
+                      <button
+                        onClick={() => handleScModeChange('industrial')}
+                        className={`flex items-center justify-center gap-2 py-2 px-3 text-[10px] uppercase tracking-wider font-bold rounded-lg border transition-all ${shortCircuitMode === 'industrial' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      >
+                        <Factory className="w-3 h-3" />
+                        <span className="truncate">{t.scPresets.industrial.split(' ')[0]}</span>
+                      </button>
+                      <button
+                        onClick={() => handleScModeChange('custom')}
+                        className={`flex items-center justify-center gap-2 py-2 px-3 text-[10px] uppercase tracking-wider font-bold rounded-lg border transition-all ${shortCircuitMode === 'custom' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      >
+                        <PenTool className="w-3 h-3" />
+                        <span className="truncate">{t.scPresets.custom.split(' ')[0]}</span>
+                      </button>
+                    </div>
+                    
+                    <div className="relative">
+                      <Input 
+                        type="number" 
+                        value={shortCircuit} 
+                        onChange={(val) => {
+                          setShortCircuit(val);
+                          setShortCircuitMode('custom');
+                        }} 
+                        step="0.1"
+                        isValid={isShortCircuitValid}
+                      />
+                      {shortCircuitMode === 'custom' && (
+                        <button 
+                          onClick={() => setIsScModalOpen(true)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-md text-zinc-400 hover:text-white transition-colors"
+                          title={t.scCalc.title}
+                        >
+                          <Calculator className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <Label tooltip={t.tooltips.disconnectionTime}>{t.disconnectionTime}</Label>
@@ -907,21 +1117,21 @@ export default function App() {
           </div>
 
           {/* Right Column: Results */}
-          <div className="lg:col-span-5 space-y-6">
-            
-            {/* Analysis Summary */}
-            <section className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl">
-              <div className="bg-zinc-800/50 px-6 py-4 border-bottom border-zinc-800 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Calculator className="w-4 h-4 text-emerald-500" />
-                  <h2 className="text-sm font-bold uppercase tracking-widest">{t.analysis}</h2>
+          <div className="lg:col-span-5 relative">
+            <div className="lg:sticky lg:top-6 space-y-6">
+              {/* Analysis Summary */}
+              <section className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="bg-zinc-800/50 px-4 md:px-6 py-4 border-bottom border-zinc-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calculator className="w-4 h-4 text-emerald-500" />
+                    <h2 className="text-sm font-bold uppercase tracking-widest">{t.analysis}</h2>
+                  </div>
+                  <div className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded border border-emerald-500/20">
+                    LIVE
+                  </div>
                 </div>
-                <div className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded border border-emerald-500/20">
-                  LIVE
-                </div>
-              </div>
 
-              <div className="p-6 space-y-6">
+                <div className="p-4 md:p-6 space-y-6">
                 {!isFormComplete ? (
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -1073,7 +1283,7 @@ export default function App() {
             </section>
 
             {/* Reference Info */}
-            <section className="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6">
+            <section className="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-4 md:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <FileText className="w-4 h-4 text-zinc-500" />
                 <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-500">{t.references}</h2>
@@ -1093,26 +1303,27 @@ export default function App() {
                 </li>
               </ul>
             </section>
+            </div>
           </div>
         </div>
 
         {/* Project List */}
         {projectLines.length > 0 && (
-          <section className="mt-12 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl">
-            <div className="bg-zinc-800/50 px-6 py-4 border-bottom border-zinc-800 flex items-center justify-between">
+          <section className="mt-8 md:mt-12 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="bg-zinc-800/50 px-4 md:px-6 py-4 border-bottom border-zinc-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-emerald-500" />
                 <h2 className="text-sm font-bold uppercase tracking-widest">{t.projectList}</h2>
               </div>
               <button
                 onClick={handleExportExcel}
-                className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-emerald-500/20 transition-colors flex items-center gap-2"
+                className="px-3 md:px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-emerald-500/20 transition-colors flex items-center gap-2"
               >
                 <Download className="w-3 h-3" />
-                {t.exportExcel}
+                <span className="hidden sm:inline">{t.exportExcel}</span>
               </button>
             </div>
-            <div className="p-6 overflow-x-auto">
+            <div className="p-4 md:p-6 overflow-x-auto custom-scrollbar">
               <table className="w-full text-left text-sm text-zinc-400">
                 <thead className="text-xs uppercase bg-zinc-800/50 text-zinc-300">
                   <tr>
@@ -1166,6 +1377,95 @@ export default function App() {
           </div>
         </footer>
       </main>
+
+      {/* Short Circuit Calculator Modal */}
+      <AnimatePresence>
+        {isScModalOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsScModalOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-800/30">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-500/10 rounded-lg">
+                    <Zap className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <h3 className="text-sm font-bold text-white">{t.scCalc.title}</h3>
+                </div>
+                <button 
+                  onClick={() => setIsScModalOpen(false)}
+                  className="p-2 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  {t.scCalc.desc}
+                </p>
+                
+                <div className="space-y-4">
+                  <div>
+                    <Label>{t.scCalc.trPower}</Label>
+                    <Input 
+                      type="number" 
+                      value={trPower} 
+                      onChange={setTrPower} 
+                      placeholder="e.g. 400"
+                    />
+                  </div>
+                  <div>
+                    <Label>{t.scCalc.trImpedance}</Label>
+                    <Input 
+                      type="number" 
+                      value={trImpedance} 
+                      onChange={setTrImpedance} 
+                      placeholder="e.g. 4"
+                      step="0.1"
+                    />
+                  </div>
+                  <div>
+                    <Label>{t.scCalc.voltage}</Label>
+                    <Input 
+                      type="number" 
+                      value={isThreePhase ? 380 : 220} 
+                      onChange={() => {}} 
+                      disabled
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setIsScModalOpen(false)}
+                    className="flex-1 py-2.5 px-4 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-colors"
+                  >
+                    {t.scCalc.cancel}
+                  </button>
+                  <button
+                    onClick={handleCalculateSC}
+                    disabled={trPower === '' || trImpedance === ''}
+                    className="flex-1 py-2.5 px-4 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-zinc-500 text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-colors"
+                  >
+                    {t.scCalc.calculate}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
