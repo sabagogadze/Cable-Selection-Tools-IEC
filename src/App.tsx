@@ -803,6 +803,11 @@ export default function App() {
         isCapacityInsufficient = true;
       }
     }
+    
+    // Enforce minimum size for Aluminum (2.5mm2)
+    if (conductor === 'Aluminum' && finalSize < 2.5) {
+      finalSize = 2.5;
+    }
 
     // 6. Size by Voltage Drop
     let sizeByVD = finalSize;
@@ -814,8 +819,21 @@ export default function App() {
       : (insulation === 'PVC' ? 'al_pvc' : 'al_xlpe') as 'al_pvc' | 'al_xlpe';
 
     const checkVD = (s: number, pc: number) => {
-      const vdFactor = VOLTAGE_DROP_FACTORS[s][vdKey];
-      const vd = (vdFactor * loadCurrent * l) / (1000 * pc);
+      // R = rho / S. We use operating temperature rho (22.5 for Cu, 36 for Al)
+      const r = conductor === 'Copper' ? 22.5 / s : 36 / s;
+      // Standard reactance for multi-core cables is approx 0.08 ohm/km
+      const x = 0.08; 
+      
+      const cosPhi = pf;
+      const sinPhi = Math.sin(Math.acos(cosPhi));
+      
+      // Voltage drop formula: dV = I * L * (R*cosPhi + X*sinPhi) * (sqrt(3) or 2) / 1000
+      const impedanceFactor = (r * cosPhi) + (x * sinPhi);
+      
+      const vd = isThreePhase 
+        ? (Math.sqrt(3) * loadCurrent * l * impedanceFactor) / (1000 * pc)
+        : (2 * loadCurrent * l * impedanceFactor) / (1000 * pc);
+        
       const vdPercent = (vd / voltage) * 100;
       return { vd, vdPercent };
     };
