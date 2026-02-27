@@ -98,6 +98,8 @@ const translations = {
     footer: "Industrial Grade Tool",
     disclaimer: "Values are representative. Verify with local regulations.",
     instructionsTitle: "How to use the calculator",
+    watchTutorial: "Watch Tutorial",
+    tutorialTitle: "How it works",
     lineName: "Line Name",
     shortCircuit: "Expected Short Circuit (kA)",
     disconnectionTime: "Disconnection Time (s)",
@@ -207,6 +209,8 @@ const translations = {
     footer: "ინდუსტრიული დონის ხელსაწყო",
     disclaimer: "მნიშვნელობები საორიენტაციოა. გადაამოწმეთ ადგილობრივ რეგულაციებთან.",
     instructionsTitle: "როგორ გამოვიყენოთ კალკულატორი",
+    watchTutorial: "ნახეთ ინსტრუქცია",
+    tutorialTitle: "როგორ მუშაობს",
     lineName: "ხაზის დასახელება",
     shortCircuit: "მოსალოდნელი მოკლე ჩართვა (kA)",
     disconnectionTime: "გათიშვის დრო (წმ)",
@@ -542,6 +546,7 @@ export default function App() {
   const [shortCircuitMode, setShortCircuitMode] = useState<'residential' | 'commercial' | 'industrial' | 'custom'>('residential');
   const [shortCircuit, setShortCircuit] = useState<number | ''>(1);
   const [isScModalOpen, setIsScModalOpen] = useState(false);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [trPower, setTrPower] = useState<number | ''>(400);
   const [trImpedance, setTrImpedance] = useState<number | ''>(4);
   const [disconnectionTime, setDisconnectionTime] = useState<number | ''>(0.02);
@@ -938,6 +943,13 @@ export default function App() {
             <p className="text-zinc-400 max-w-xl text-xs md:text-sm leading-relaxed">
               {t.subtitle}
             </p>
+            <button 
+              onClick={() => setIsTutorialOpen(true)}
+              className="relative z-20 mt-4 flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold uppercase tracking-widest rounded-lg transition-colors border border-zinc-700 cursor-pointer"
+            >
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              {t.watchTutorial}
+            </button>
           </div>
           
           <div className="flex items-center gap-4 bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl backdrop-blur-sm">
@@ -1685,6 +1697,144 @@ export default function App() {
                     className="flex-1 py-2.5 px-4 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-800 disabled:text-zinc-500 text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-colors"
                   >
                     {t.scCalc.calculate}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Tutorial Modal */}
+      <AnimatePresence>
+        {isTutorialOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsTutorialOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-3xl bg-[#0A0A0A] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/50">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-300">{t.tutorialTitle}</h3>
+                </div>
+                <button 
+                  onClick={() => setIsTutorialOpen(false)}
+                  className="p-2 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-6 md:p-8">
+                {/* CSS Animated Tutorial Container */}
+                <div className="relative w-full aspect-video bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden flex items-center justify-center">
+                  
+                  {/* Step 1: Input Power */}
+                  <motion.div 
+                    className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center"
+                    initial={{ opacity: 1 }}
+                    animate={{ opacity: [1, 1, 0, 0, 0, 0, 0, 1] }}
+                    transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4 border border-emerald-500/20 mx-auto">
+                      <Zap className="w-8 h-8 text-emerald-500" />
+                    </div>
+                    <h4 className="text-xl font-bold text-white mb-2">{lang === 'en' ? '1. Enter Load Data' : '1. შეიყვანეთ დატვირთვა'}</h4>
+                    <p className="text-zinc-400 text-sm max-w-xs mx-auto">
+                      {lang === 'en' ? 'Input the power (kW), voltage, and power factor of your equipment.' : 'მიუთითეთ თქვენი დანადგარის სიმძლავრე (კვტ), ძაბვა და cos φ.'}
+                    </p>
+                    
+                    {/* Simulated Input */}
+                    <div className="mt-8 w-64 mx-auto bg-zinc-950 border border-zinc-800 rounded-lg p-3 flex items-center justify-between">
+                      <span className="text-zinc-500 text-xs font-mono">Power (kW)</span>
+                      <motion.span 
+                        className="text-emerald-400 font-mono font-bold"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 1, 1] }}
+                        transition={{ duration: 12, times: [0, 0.05, 1], repeat: Infinity }}
+                      >
+                        9.0
+                      </motion.span>
+                    </div>
+                  </motion.div>
+
+                  {/* Step 2: Environment */}
+                  <motion.div 
+                    className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 0, 1, 1, 0, 0, 0, 0] }}
+                    transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4 border border-blue-500/20 mx-auto">
+                      <Layers className="w-8 h-8 text-blue-500" />
+                    </div>
+                    <h4 className="text-xl font-bold text-white mb-2">{lang === 'en' ? '2. Set Environment' : '2. გარემო პირობები'}</h4>
+                    <p className="text-zinc-400 text-sm max-w-xs mx-auto">
+                      {lang === 'en' ? 'Select installation method, temperature, and grouping factors.' : 'აირჩიეთ ინსტალაციის მეთოდი, ტემპერატურა და დაჯგუფება.'}
+                    </p>
+                    
+                    {/* Simulated Select */}
+                    <div className="mt-8 w-64 mx-auto bg-zinc-950 border border-zinc-800 rounded-lg p-3 flex items-center justify-between">
+                      <span className="text-zinc-500 text-xs font-mono">Method</span>
+                      <span className="text-blue-400 font-mono font-bold text-sm">A1 (In Wall)</span>
+                    </div>
+                  </motion.div>
+
+                  {/* Step 3: Results */}
+                  <motion.div 
+                    className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 0, 0, 0, 1, 1, 0, 0] }}
+                    transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <div className="w-16 h-16 bg-purple-500/10 rounded-full flex items-center justify-center mb-4 border border-purple-500/20 mx-auto">
+                      <Calculator className="w-8 h-8 text-purple-500" />
+                    </div>
+                    <h4 className="text-xl font-bold text-white mb-2">{lang === 'en' ? '3. Get IEC Results' : '3. მიიღეთ შედეგი'}</h4>
+                    <p className="text-zinc-400 text-sm max-w-xs mx-auto">
+                      {lang === 'en' ? 'The app calculates the exact breaker and cable size based on IEC 60364-5-52.' : 'აპლიკაცია ითვლის ზუსტ ავტომატს და კაბელს IEC სტანდარტით.'}
+                    </p>
+                    
+                    {/* Simulated Result */}
+                    <div className="mt-8 flex gap-4 justify-center">
+                      <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-center w-28">
+                        <div className="text-zinc-500 text-[10px] uppercase mb-1">Breaker</div>
+                        <div className="text-white font-mono font-bold">50A</div>
+                      </div>
+                      <div className="bg-zinc-950 border border-emerald-500/30 rounded-lg p-3 text-center w-28">
+                        <div className="text-zinc-500 text-[10px] uppercase mb-1">Cable</div>
+                        <div className="text-emerald-400 font-mono font-bold">10 mm²</div>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Progress Bar */}
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-800">
+                    <motion.div 
+                      className="h-full bg-emerald-500"
+                      initial={{ width: "0%" }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6 flex justify-center">
+                  <button 
+                    onClick={() => setIsTutorialOpen(false)}
+                    className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-colors"
+                  >
+                    {lang === 'en' ? 'Got it, let\'s start' : 'გასაგებია, დავიწყოთ'}
                   </button>
                 </div>
               </div>
