@@ -904,7 +904,7 @@ export default function App() {
     <div className="min-h-screen bg-[#0A0A0A] text-zinc-100 font-sans selection:bg-emerald-500/30">
       <div className="fixed inset-0 bg-[linear-gradient(to_right,#1a1a1a_1px,transparent_1px),linear-gradient(to_bottom,#1a1a1a_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none opacity-20" />
 
-      <main className="relative max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+      <main className="relative max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-12 pb-32 lg:pb-12">
         {/* Language Switcher */}
         <div className="flex justify-end mb-4">
           <div className="flex bg-zinc-900 rounded-lg p-1 border border-zinc-800">
@@ -1514,6 +1514,47 @@ export default function App() {
             <span>{t.disclaimer}</span>
           </div>
         </footer>
+
+        {/* Mobile Sticky Footer */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+          {!isFormComplete ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Settings2 className="w-5 h-5 text-emerald-500" />
+                <span className="text-sm font-bold text-zinc-300 truncate max-w-[200px]">{t.missingFields}</span>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 shrink-0">
+                {7 - missingFields.length} / 7
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{t.recSize}</span>
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{t.recommendedBreaker}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-emerald-400 text-sm truncate pr-2">
+                    {results!.isCapacityInsufficient ? t.insufficientCapacity : results!.cableName}
+                  </span>
+                  <span className="font-mono font-bold text-emerald-400 text-sm shrink-0">
+                    {results!.recommendedBreaker}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  handleAddToProject();
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="shrink-0 w-12 h-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl flex items-center justify-center transition-colors shadow-lg shadow-emerald-500/20"
+              >
+                <Plus className="w-6 h-6" />
+              </button>
+            </div>
+          )}
+        </div>
       </main>
 
       {/* Hidden PDF Report Template */}
