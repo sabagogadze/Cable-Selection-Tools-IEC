@@ -1516,7 +1516,7 @@ export default function App() {
         </footer>
 
         {/* Mobile Sticky Footer */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+        <div className="lg:hidden sticky bottom-0 left-0 right-0 z-50 mt-8 bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] -mx-4 sm:-mx-6 px-4 sm:px-6">
           {!isFormComplete ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
