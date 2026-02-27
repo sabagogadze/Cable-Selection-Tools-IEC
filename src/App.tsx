@@ -756,7 +756,12 @@ export default function App() {
     );
     const kTemp = tempTable[closestTemp] || 1;
     const kGroup = GROUPING_CORRECTION[grouping] || GROUPING_CORRECTION[Object.keys(GROUPING_CORRECTION).length];
-    const totalCorrection = kTemp * kGroup;
+    
+    // IEC 60364-5-52: 1-phase circuits (2 loaded conductors) dissipate less heat 
+    // and have ~12% higher current capacity compared to 3-phase (3 loaded conductors)
+    const kPhase = isThreePhase ? 1.0 : 1.12; 
+    
+    const totalCorrection = kTemp * kGroup * kPhase;
     
     // Cable must carry the breaker nominal current (In), not just load current (Ib)
     const correctedCurrent = nominalBreaker / totalCorrection;
