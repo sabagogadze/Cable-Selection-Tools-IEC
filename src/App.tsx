@@ -94,6 +94,9 @@ const translations = {
     vdWarningDesc: "The selected cable size exceeds the maximum allowed voltage drop. Consider increasing cable size.",
     complianceVerified: "Compliance Verified",
     complianceDesc: "The selected cable satisfies both capacity and voltage drop requirements.",
+    showDetails: "Show Detailed Calculation",
+    hideDetails: "Hide Detailed Calculation",
+    detailsExplanation: "The final cable size is determined by taking the largest value among these three criteria to ensure safety and compliance with IEC standards.",
     references: "Standard References",
     footer: "Industrial Grade Tool",
     disclaimer: "Values are representative. Verify with local regulations.",
@@ -205,6 +208,9 @@ const translations = {
     vdWarningDesc: "შერჩეული კაბელის კვეთა აჭარბებს ძაბვის მაქსიმალურ დასაშვებ ვარდნას. განიხილეთ კვეთის გაზრდა.",
     complianceVerified: "შესაბამისობა დადასტურებულია",
     complianceDesc: "შერჩეული კაბელი აკმაყოფილებს როგორც გამტარობის, ისე ძაბვის ვარდნის მოთხოვნებს.",
+    showDetails: "დეტალური გაანგარიშების ნახვა",
+    hideDetails: "დეტალების დამალვა",
+    detailsExplanation: "საბოლოო კაბელის კვეთა შეირჩევა ამ სამი კრიტერიუმიდან ყველაზე დიდის მიხედვით, რათა უზრუნველყოფილი იყოს სრული უსაფრთხოება და IEC სტანდარტებთან შესაბამისობა.",
     references: "სტანდარტული მითითებები",
     footer: "ინდუსტრიული დონის ხელსაწყო",
     disclaimer: "მნიშვნელობები საორიენტაციოა. გადაამოწმეთ ადგილობრივ რეგულაციებთან.",
@@ -547,6 +553,7 @@ export default function App() {
   const [shortCircuit, setShortCircuit] = useState<number | ''>(1);
   const [isScModalOpen, setIsScModalOpen] = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [trPower, setTrPower] = useState<number | ''>(400);
   const [trImpedance, setTrImpedance] = useState<number | ''>(4);
   const [disconnectionTime, setDisconnectionTime] = useState<number | ''>(0.02);
@@ -739,8 +746,11 @@ export default function App() {
 
     // 2. Select Breaker (In) based on Design Current (Ib)
     // The rule is: Ib <= In <= Iz
-    // So we pick the next standard breaker size that is >= loadCurrent
-    const breaker = BREAKER_SIZES.find(b => b >= loadCurrent);
+    // To prevent nuisance tripping due to thermal accumulation during continuous operation,
+    // we apply a 15% safety margin (1.15 multiplier) to the design current.
+    const safetyMargin = 1.15;
+    const targetBreakerCurrent = loadCurrent * safetyMargin;
+    const breaker = BREAKER_SIZES.find(b => b >= targetBreakerCurrent);
     const nominalBreaker = breaker || loadCurrent;
 
     // Determine Breaker Type (MCB vs MCCB) and Poles
@@ -1326,33 +1336,57 @@ export default function App() {
                       </div>
 
                       {!results!.isCapacityInsufficient && (
-                        <>
-                          <div className="flex items-center justify-between text-sm py-2 border-b border-zinc-800/50">
-                            <span className="text-zinc-400">{t.minSizeCap}</span>
-                            <span className="font-mono font-bold text-white">{results!.minSizeByCapacity} mm²</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm py-2 border-b border-zinc-800/50">
-                            <span className="text-zinc-400">{t.minSizeSC}</span>
-                            <span className="font-mono font-bold text-white">{results!.minSizeByShortCircuit} mm²</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm py-2 border-b border-zinc-800/50">
-                            <span className="text-zinc-400">{t.minSizeVD}</span>
-                            <span className="font-mono font-bold text-white">{results!.minSizeByVoltageDrop} mm²</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm py-2 border-b border-zinc-800/50">
-                            <span className="text-zinc-400">{t.vd}</span>
-                            <div className="text-right">
-                              <div className="font-mono font-bold text-white">{results!.voltageDrop.toFixed(2)} V</div>
-                              <div className={`text-[10px] font-bold ${results!.voltageDropPercent > (maxVDrop as number) ? 'text-red-400' : 'text-emerald-500'}`}>
-                                {results!.voltageDropPercent.toFixed(2)}% of {voltage}V
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between text-sm py-2">
-                            <span className="text-zinc-400">{t.effCap}</span>
-                            <span className="font-mono font-bold text-white">{results!.capacityAtSelectedSize.toFixed(1)} A</span>
-                          </div>
-                        </>
+                        <div className="mt-6 border border-zinc-800 rounded-xl overflow-hidden">
+                          <button
+                            onClick={() => setIsDetailsOpen(!isDetailsOpen)}
+                            className="w-full flex items-center justify-between p-4 bg-zinc-900/50 hover:bg-zinc-800/50 transition-colors text-sm font-bold text-zinc-300"
+                          >
+                            <span>{isDetailsOpen ? t.hideDetails : t.showDetails}</span>
+                            <ChevronDown className={`w-4 h-4 transition-transform ${isDetailsOpen ? 'rotate-180' : ''}`} />
+                          </button>
+                          
+                          <AnimatePresence>
+                            {isDetailsOpen && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <div className="p-4 bg-zinc-900/30 border-t border-zinc-800">
+                                  <p className="text-xs text-zinc-400 mb-4 leading-relaxed bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50">
+                                    {t.detailsExplanation}
+                                  </p>
+                                  <div className="flex items-center justify-between text-sm py-2 border-b border-zinc-800/50">
+                                    <span className="text-zinc-400">{t.minSizeCap}</span>
+                                    <span className="font-mono font-bold text-white">{results!.minSizeByCapacity} mm²</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-sm py-2 border-b border-zinc-800/50">
+                                    <span className="text-zinc-400">{t.minSizeSC}</span>
+                                    <span className="font-mono font-bold text-white">{results!.minSizeByShortCircuit} mm²</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-sm py-2 border-b border-zinc-800/50">
+                                    <span className="text-zinc-400">{t.minSizeVD}</span>
+                                    <span className="font-mono font-bold text-white">{results!.minSizeByVoltageDrop} mm²</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-sm py-2 border-b border-zinc-800/50">
+                                    <span className="text-zinc-400">{t.vd}</span>
+                                    <div className="text-right">
+                                      <div className="font-mono font-bold text-white">{results!.voltageDrop.toFixed(2)} V</div>
+                                      <div className={`text-[10px] font-bold ${results!.voltageDropPercent > (maxVDrop as number) ? 'text-red-400' : 'text-emerald-500'}`}>
+                                        {results!.voltageDropPercent.toFixed(2)}% of {voltage}V
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center justify-between text-sm py-2">
+                                    <span className="text-zinc-400">{t.effCap}</span>
+                                    <span className="font-mono font-bold text-white">{results!.capacityAtSelectedSize.toFixed(1)} A</span>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                       )}
                     </div>
 
