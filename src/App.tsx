@@ -815,14 +815,6 @@ export default function App() {
     }
 
     // 6. Size by Voltage Drop
-    let sizeByVD = finalSize;
-    let finalVD = 0;
-    let finalVDPercent = 0;
-
-    const vdKey = conductor === 'Copper' 
-      ? (insulation.toLowerCase() as 'pvc' | 'xlpe') 
-      : (insulation === 'PVC' ? 'al_pvc' : 'al_xlpe') as 'al_pvc' | 'al_xlpe';
-
     const checkVD = (s: number, pc: number) => {
       // R = rho / S. We use operating temperature rho (22.5 for Cu, 36 for Al)
       const r = conductor === 'Copper' ? 22.5 / s : 36 / s;
@@ -843,36 +835,26 @@ export default function App() {
       return { vd, vdPercent };
     };
 
-    let vdResult = checkVD(finalSize, parallelCount);
+    let minSizeVD_exact = methodCapacities[0].size;
+    let vdFound = false;
+    for (const item of methodCapacities) {
+      const res = checkVD(item.size, parallelCount);
+      if (res.vdPercent <= mvd) {
+        minSizeVD_exact = item.size;
+        vdFound = true;
+        break;
+      }
+    }
     
-    if (vdResult.vdPercent > mvd && !isCapacityInsufficient) {
-      // Try increasing size
-      let vdFound = false;
-      for (const item of methodCapacities) {
-        if (item.size < finalSize) continue;
-        
-        const res = checkVD(item.size, parallelCount);
-        if (res.vdPercent <= mvd) {
-          sizeByVD = item.size;
-          finalVD = res.vd;
-          finalVDPercent = res.vdPercent;
-          vdFound = true;
-          break;
-        }
-      }
-      
-      if (!vdFound) {
-        sizeByVD = methodCapacities[methodCapacities.length - 1].size;
-        const res = checkVD(sizeByVD, parallelCount);
-        finalVD = res.vd;
-        finalVDPercent = res.vdPercent;
-      }
-    } else {
-      finalVD = vdResult.vd;
-      finalVDPercent = vdResult.vdPercent;
+    if (!vdFound) {
+      minSizeVD_exact = methodCapacities[methodCapacities.length - 1].size;
     }
 
-    const finalResultSize = sizeByVD;
+    const finalResultSize = Math.max(finalSize, minSizeVD_exact);
+    const finalVDResult = checkVD(finalResultSize, parallelCount);
+    const finalVD = finalVDResult.vd;
+    const finalVDPercent = finalVDResult.vdPercent;
+
     const capacityAtSelected = (methodCapacities.find(c => c.size === finalResultSize)?.capacity || 0) * parallelCount;
 
     // Generate Cable Name
@@ -892,7 +874,7 @@ export default function App() {
       nominalBreaker,
       correctedCurrent,
       minSizeByCapacity,
-      minSizeByVoltageDrop: sizeByVD,
+      minSizeByVoltageDrop: minSizeVD_exact,
       minSizeByShortCircuit,
       finalSize: finalResultSize,
       parallelCount: parallelCount,
